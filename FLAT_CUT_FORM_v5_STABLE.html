@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flat Cut - Product Configuration Form</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; padding: 40px 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.12); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+        .header h1 { font-size: 32px; font-weight: 600; margin-bottom: 8px; }
+        .header p { font-size: 14px; opacity: 0.95; }
+        .form-content { padding: 40px 30px; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin-bottom: 30px; }
+        @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
+        .form-section { display: flex; flex-direction: column; }
+        .form-section.full { grid-column: 1 / -1; }
+        .form-section label { font-weight: 600; color: #333; margin-bottom: 12px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-section input[type="number"], .form-section select, .form-section textarea { padding: 12px 14px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; font-family: inherit; transition: border-color 0.3s, box-shadow 0.3s; }
+        .form-section input[type="number"]:focus, .form-section select:focus, .form-section textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .form-section textarea { resize: vertical; min-height: 100px; }
+        .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 14px; margin-top: 10px; border-radius: 4px; font-size: 13px; color: #856404; display: none; }
+        .warning-box.active { display: block; }
+        .button-group { display: flex; gap: 12px; flex-wrap: wrap; }
+        .button-option { flex: 1; min-width: 120px; }
+        .button-option input[type="radio"] { display: none; }
+        .button-option label { display: block; padding: 12px 14px; border: 2px solid #e0e0e0; border-radius: 6px; cursor: pointer; text-align: center; font-weight: 500; font-size: 13px; transition: all 0.3s; margin: 0; text-transform: capitalize; }
+        .button-option input[type="radio"]:checked + label { background: #667eea; color: white; border-color: #667eea; }
+        .button-option label:hover { border-color: #667eea; }
+        .dimensions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .letters-preview-section { display: none; background: #f8f9ff; border: 2px solid #667eea; border-radius: 8px; padding: 20px; margin-top: 20px; grid-column: 1 / -1; }
+        .letters-preview-section.active { display: block; }
+        .letters-preview-section h3 { color: #667eea; font-size: 16px; margin-bottom: 15px; }
+        .sync-font-option { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; }
+        .sync-font-option input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .sync-font-option label { margin: 0; cursor: pointer; font-weight: 500; font-size: 14px; }
+        .global-font-controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 15px; }
+        .global-font-controls.hidden { display: none; }
+        .letters-dimensions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; padding: 15px; background: white; border-radius: 6px; border: 1px solid #e0e0e0; }
+        .control-group { display: flex; flex-direction: column; }
+        .control-group label { font-weight: 600; color: #333; margin-bottom: 6px; font-size: 12px; text-transform: uppercase; }
+        .control-group input, .control-group select { padding: 8px; border: 2px solid #e0e0e0; border-radius: 4px; font-size: 12px; }
+        .control-group input:focus, .control-group select:focus { outline: none; border-color: #667eea; }
+        .text-lines-list { margin: 20px 0; }
+        .text-line-item { background: white; border: 2px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-bottom: 10px; }
+        .text-line-item.expanded { border-color: #667eea; background: #f8f9ff; }
+        .text-line-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+        .text-line-title { font-weight: 600; color: #333; font-size: 14px; margin-bottom: 8px; }
+        .text-input-inline { width: 100%; padding: 10px; border: 2px solid #667eea; border-radius: 4px; font-size: 14px; font-family: 'Courier New', monospace; min-height: 50px; margin-bottom: 10px; text-align: center; }
+        .text-input-inline:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1); }
+        .text-line-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .btn-small { padding: 6px 12px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+        .btn-edit { background: #667eea; color: white; }
+        .btn-delete { background: #ff6b6b; color: white; }
+        .btn-apply { background: #28a745; color: white; }
+        .text-line-config { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0; }
+        .text-line-config.active { display: block; }
+        .controls-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 15px; }
+        .preview-canvas { background: #f0f0f0; border: 2px solid #ddd; border-radius: 6px; padding: 20px; margin-top: 20px; min-height: 400px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .preview-container { position: relative; width: 100%; height: 100%; min-height: 350px; }
+        .canvas-dimensions { position: absolute; background: #e8e8e8; border: 2px solid #999; border-radius: 0px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 12px; font-weight: 600; }
+        .preview-text-line { position: absolute; cursor: grab; padding: 5px; user-select: none; white-space: nowrap; background: transparent; border: none; text-align: center; transform: translate(-50%, -50%); }
+        .preview-text-line:active { cursor: grabbing; }
+        .add-line-btn { background: #667eea; color: white; padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; margin-top: 10px; }
+        .actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 40px; padding-top: 30px; border-top: 2px solid #f0f0f0; }
+        button.btn-primary { padding: 14px 24px; font-size: 14px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-save { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3); }
+        .btn-pdf { background: #f5f5f5; color: #333; border: 2px solid #e0e0e0; }
+        .btn-pdf:hover { background: #e8e8e8; border-color: #667eea; }
+        .btn-pdf:disabled { opacity: 0.5; cursor: not-allowed; }
+        .summary { background: #f8f9ff; border: 2px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-top: 30px; display: none; }
+        .summary.active { display: block; }
+        .summary h3 { color: #667eea; font-size: 16px; margin-bottom: 15px; }
+        .summary-item { display: grid; grid-template-columns: 150px 1fr; padding: 8px 0; border-bottom: 1px solid #e0e0e0; }
+        .summary-item:last-child { border-bottom: none; }
+        .summary-label { font-weight: 600; color: #667eea; font-size: 13px; }
+        .summary-value { color: #333; font-size: 13px; }
+        .success-message { display: none; background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px 20px; border-radius: 6px; margin-bottom: 20px; text-align: center; font-size: 14px; }
+        .success-message.active { display: block; animation: slideDown 0.3s ease; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Flat Cut Product Configuration</h1>
+            <p>Configure your custom flat cut sign in 8 simple steps</p>
+        </div>
+        <div class="form-content">
+            <div class="success-message" id="successMessage">✓ Configuration saved successfully</div>
+            <form id="flatCutForm">
+                <div class="form-grid">
+                    <div class="form-section full">
+                        <label>1. Shape</label>
+                        <div class="button-group">
+                            <div class="button-option"><input type="radio" id="shape-panel" name="shape" value="Panel" required><label for="shape-panel">Panel</label></div>
+                            <div class="button-option"><input type="radio" id="shape-custom" name="shape" value="Custom Shape"><label for="shape-custom">Custom Shape</label></div>
+                            <div class="button-option"><input type="radio" id="shape-letters" name="shape" value="Letters"><label for="shape-letters">Letters</label></div>
+                        </div>
+                    </div>
+                    <div class="form-section full" id="dimensionsSectionNormal">
+                        <label>2. Dimensions (mm) - Max 1200×2400</label>
+                        <div class="dimensions-grid"><input type="number" id="width" name="width" placeholder="Width" required><input type="number" id="height" name="height" placeholder="Height" required></div>
+                        <div class="warning-box" id="dimensionWarning"></div>
+                    </div>
+                    <div class="letters-preview-section" id="lettersPreview">
+                        <h3>📝 Letters Preview & Configuration</h3>
+                        <div class="sync-font-option"><input type="checkbox" id="syncFonts" checked><label for="syncFonts">Apply same font settings to all lines</label></div>
+                        <div id="globalFontControls" class="global-font-controls">
+                            <div class="control-group"><label>Font Family</label><select id="globalFont"><option value="Arial">Arial</option><option value="'Trebuchet MS'">Trebuchet MS</option><option value="Georgia">Georgia</option><option value="Roboto">Roboto</option><option value="Futura">Futura</option><option value="Gotham">Gotham</option></select></div>
+                            <div class="control-group"><label>Weight</label><select id="globalWeight"><option value="400">Regular</option><option value="600">Semi Bold</option><option value="700">Bold</option></select></div>
+                            <div class="control-group"><label>Font Size (mm)</label><input type="number" id="globalSize" value="50" min="10"></div>
+                            <div class="control-group"><label>Condense (mm)</label><input type="number" id="globalCondense" placeholder="auto"></div>
+                        </div>
+                        <div class="letters-dimensions">
+                            <div class="control-group"><label>Canvas Width (mm)</label><input type="number" id="canvasWidth" placeholder="No dimension set"></div>
+                            <div class="control-group"><label>Canvas Height (mm)</label><input type="number" id="canvasHeight" placeholder="No dimension set"></div>
+                        </div>
+                        <div class="text-lines-list" id="textLinesList"></div>
+                        <button type="button" class="add-line-btn" id="addLineBtn">+ Add Text Line</button>
+                        <div class="preview-canvas" id="previewCanvas"><div class="preview-container" id="previewContainer"></div></div>
+                    </div>
+                    <div class="form-section" id="materialSection"><label>3. Material</label><select id="material" name="material" required><option value="">-- Select Material --</option><option value="ACM 3mm">ACM 3mm</option><option value="Back Black ACM 3mm">Back Black ACM 3mm</option><option value="Acrylic 3-10mm">Acrylic 3-10mm</option><option value="Acrylic 10-20mm">Acrylic 10-20mm</option><option value="PVC 10-30mm">PVC 10-30mm</option></select><div class="warning-box" id="materialWarning"></div></div>
+                    <div class="form-section" id="locationSection"><label>4. Location</label><div class="button-group"><div class="button-option"><input type="radio" id="location-interior" name="location" value="Interior" required><label for="location-interior">Interior</label></div><div class="button-option"><input type="radio" id="location-exterior" name="location" value="Exterior"><label for="location-exterior">Exterior</label></div></div><div class="warning-box" id="locationWarning"></div></div>
+                    <div class="form-section full" id="finishingSection"><label>5. Finishing</label><div class="button-group" id="finishingGroup"></div></div>
+                    <div class="form-section full" id="finishTypeSection" style="display: none;"><label>6. Finish Type</label><div class="button-group"><div class="button-option"><input type="radio" id="finishtype-matte" name="finishType" value="Matte"><label for="finishtype-matte">Matte</label></div><div class="button-option"><input type="radio" id="finishtype-gloss" name="finishType" value="Gloss" checked><label for="finishtype-gloss">Gloss</label></div></div></div>
+                    <div class="form-section full" id="mountingSection"><label>7. Mounting</label><div class="button-group" id="mountingGroup"></div></div>
+                    <div class="form-section full"><label>8. Special Notes (Optional)</label><textarea id="notes" name="notes" placeholder="Font details, rush delivery, custom requests, orientation preference, etc."></textarea></div>
+                </div>
+                <div class="summary" id="summary">
+                    <h3>Configuration Summary</h3>
+                    <div class="summary-item"><div class="summary-label">Shape</div><div class="summary-value" id="sum-shape">-</div></div>
+                    <div class="summary-item"><div class="summary-label">Dimensions</div><div class="summary-value" id="sum-dimensions">-</div></div>
+                    <div class="summary-item"><div class="summary-label">Material</div><div class="summary-value" id="sum-material">-</div></div>
+                    <div class="summary-item"><div class="summary-label">Location</div><div class="summary-value" id="sum-location">-</div></div>
+                    <div class="summary-item"><div class="summary-label">Finishing</div><div class="summary-value" id="sum-finishing">-</div></div>
+                    <div class="summary-item"><div class="summary-label">Finish Type</div><div class="summary-value" id="sum-finishtype">-</div></div>
+                    <div class="summary-item"><div class="summary-label">Mounting</div><div class="summary-value" id="sum-mounting">-</div></div>
+                    <div class="summary-item" id="sum-letters-row" style="display: none;"><div class="summary-label">Letters Config</div><div class="summary-value" id="sum-letters">-</div></div>
+                    <div class="summary-item"><div class="summary-label">Notes</div><div class="summary-value" id="sum-notes">-</div></div>
+                </div>
+                <div class="actions">
+                    <button type="button" class="btn-pdf" id="generatePDF" disabled>📄 Generate PDF</button>
+                    <button type="button" class="btn-primary btn-save" id="saveConfig">💾 Save Configuration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let textLines = [];
+        let nextLineId = 1;
+        let changedLineId = null;
+        let draggedElement = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        class TextLine {
+            constructor(id) {
+                this.id = id;
+                this.text = '';
+                this.font = 'Arial';
+                this.weight = '400';
+                this.size = 50;
+                this.condense = null;
+                this.relPosX = 0;
+                this.relPosY = 0;
+            }
+            getWidth() {
+                const fontSize = this.size;
+                const charWidth = fontSize * 0.6;
+                const textWidth = this.text.length * charWidth;
+                return this.condense ? this.condense : textWidth;
+            }
+            getStats() {
+                return { text: this.text, width: this.getWidth(), chars: this.text.length, font: this.font, weight: this.weight, size: this.size };
+            }
+        }
+
+        function addTextLine() {
+            const line = new TextLine(nextLineId++);
+            textLines.push(line);
+            renderTextLines();
+            updatePreview();
+        }
+
+        function renderTextLines() {
+            const listContainer = document.getElementById('textLinesList');
+            listContainer.innerHTML = '';
+            const syncFonts = document.getElementById('syncFonts').checked;
+
+            textLines.forEach((line, index) => {
+                const div = document.createElement('div');
+                div.className = 'text-line-item';
+                if (changedLineId === line.id) div.classList.add('expanded');
+                const weightLabel = line.weight === '700' ? 'Bold' : line.weight === '600' ? 'Semi Bold' : 'Regular';
+                let configHTML = '';
+                if (!syncFonts) {
+                    configHTML = `<div class="control-group"><label>Font Family</label><select onchange="updateLineFont(${line.id}, this.value)"><option value="Arial" ${line.font === 'Arial' ? 'selected' : ''}>Arial</option><option value="'Trebuchet MS'" ${line.font === "'Trebuchet MS'" ? 'selected' : ''}>Trebuchet MS</option><option value="Georgia" ${line.font === 'Georgia' ? 'selected' : ''}>Georgia</option><option value="Roboto" ${line.font === 'Roboto' ? 'selected' : ''}>Roboto</option><option value="Futura" ${line.font === 'Futura' ? 'selected' : ''}>Futura</option><option value="Gotham" ${line.font === 'Gotham' ? 'selected' : ''}>Gotham</option></select></div><div class="control-group"><label>Weight</label><select onchange="updateLineWeight(${line.id}, this.value)"><option value="400" ${line.weight === '400' ? 'selected' : ''}>Regular</option><option value="600" ${line.weight === '600' ? 'selected' : ''}>Semi Bold</option><option value="700" ${line.weight === '700' ? 'selected' : ''}>Bold</option></select></div><div class="control-group"><label>Font Size (mm)</label><input type="number" value="${line.size}" onchange="updateLineSize(${line.id}, this.value)"></div><div class="control-group"><label>Condense (mm)</label><input type="number" value="${line.condense || ''}" placeholder="auto" onchange="updateLineCondense(${line.id}, this.value)"></div>`;
+                }
+                const hasChanges = changedLineId === line.id;
+                div.innerHTML = `<div class="text-line-header"><div style="flex: 1;"><div class="text-line-title">Text Line ${index + 1}</div><textarea class="text-input-inline" placeholder="Write your text here..." onchange="markLineChanged(${line.id}); updateLineText(${line.id}, this.value)">${line.text}</textarea><div style="font-size: 12px; color: #666; margin-bottom: 10px;">${line.font} ${weightLabel} • ${line.size}mm • ${line.getWidth().toFixed(1)}mm width • ${line.text.length} chars</div><div class="text-line-config ${changedLineId === line.id ? 'active' : ''}"><div class="controls-grid">${configHTML}</div>${hasChanges ? `<button type="button" class="btn-small btn-apply" onclick="applyLineChanges(${line.id})">Apply</button>` : ''}</div></div><div class="text-line-actions">${changedLineId !== line.id ? `<button type="button" class="btn-small btn-edit" onclick="editLine(${line.id})">Edit</button>` : ''}<button type="button" class="btn-small btn-delete" onclick="deleteTextLine(${line.id})">Delete</button></div></div>`;
+                listContainer.appendChild(div);
+            });
+        }
+
+        function markLineChanged(id) { changedLineId = id; renderTextLines(); }
+        function editLine(id) { changedLineId = id; renderTextLines(); }
+        function applyLineChanges(id) { changedLineId = null; renderTextLines(); updatePreview(); }
+        function updateLineText(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.text = value; updatePreview(); } }
+        function updateLineFont(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.font = value; renderTextLines(); updatePreviewOnly(); } }
+        function updateLineWeight(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.weight = value; renderTextLines(); updatePreviewOnly(); } }
+        function updateLineSize(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.size = parseInt(value) || 50; renderTextLines(); updatePreviewOnly(); } }
+        function updateLineCondense(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.condense = value ? parseInt(value) : null; renderTextLines(); updatePreviewOnly(); } }
+        function deleteTextLine(id) { textLines = textLines.filter(l => l.id !== id); changedLineId = null; renderTextLines(); updatePreview(); }
+
+        function calculateGroupDimensions() {
+            const syncFonts = document.getElementById('syncFonts').checked;
+            let groupWidth = 0, groupHeight = 0;
+
+            textLines.forEach((line, index) => {
+                let size = line.size;
+                if (syncFonts) size = parseInt(document.getElementById('globalSize').value) || 50;
+                groupWidth = Math.max(groupWidth, line.getWidth());
+                groupHeight += size + (index > 0 ? size : 0);
+            });
+
+            return { groupWidth, groupHeight };
+        }
+
+        function updatePreview() {
+            const container = document.getElementById('previewContainer');
+            const canvasWidth = parseInt(document.getElementById('canvasWidth').value) || 0;
+            const canvasHeight = parseInt(document.getElementById('canvasHeight').value) || 0;
+            const syncFonts = document.getElementById('syncFonts').checked;
+
+            container.innerHTML = '';
+            if (textLines.length === 0) return;
+
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            let groupDims = calculateGroupDimensions();
+            let groupWidth = groupDims.groupWidth;
+            let groupHeight = groupDims.groupHeight;
+
+            if (canvasWidth > 0 && canvasHeight > 0) {
+                groupWidth = canvasWidth;
+                groupHeight = canvasHeight;
+            }
+
+            let scaleX = 1, scaleY = 1;
+            if (groupWidth > containerWidth * 0.9) scaleX = (containerWidth * 0.9) / groupWidth;
+            if (groupHeight > containerHeight * 0.9) scaleY = (containerHeight * 0.9) / groupHeight;
+            const scale = Math.min(scaleX, scaleY, 1);
+
+            const groupCenterX = containerWidth / 2;
+            const groupCenterY = containerHeight / 2;
+
+            if (canvasWidth > 0 && canvasHeight > 0) {
+                const canvasEl = document.createElement('div');
+                canvasEl.className = 'canvas-dimensions';
+                canvasEl.style.width = (canvasWidth * scale) + 'px';
+                canvasEl.style.height = (canvasHeight * scale) + 'px';
+                canvasEl.style.left = '50%';
+                canvasEl.style.top = '50%';
+                canvasEl.style.transform = 'translate(-50%, -50%)';
+                canvasEl.textContent = canvasWidth + ' × ' + canvasHeight + ' mm';
+                container.appendChild(canvasEl);
+            }
+
+            let currentYOffset = -(groupHeight * scale) / 2;
+            
+            textLines.forEach((line, index) => {
+                let font = line.font, weight = line.weight, size = line.size;
+                if (syncFonts) {
+                    font = document.getElementById('globalFont').value;
+                    weight = document.getElementById('globalWeight').value;
+                    size = parseInt(document.getElementById('globalSize').value) || 50;
+                }
+
+                const scaledSize = size * 0.75 * scale;
+                const lineHeight = size * scale;
+                const lineCenter = currentYOffset + (lineHeight / 2);
+
+                const screenX = groupCenterX + (line.relPosX * scale);
+                const screenY = groupCenterY + lineCenter + (line.relPosY * scale);
+
+                const el = document.createElement('div');
+                el.className = 'preview-text-line';
+                el.textContent = line.text;
+                el.style.fontFamily = font;
+                el.style.fontWeight = weight;
+                el.style.fontSize = scaledSize + 'px';
+                el.style.left = screenX + 'px';
+                el.style.top = screenY + 'px';
+                el.dataset.lineId = line.id;
+                el.addEventListener('mousedown', (e) => startDrag(e, line.id, scale, groupCenterX, groupCenterY, currentYOffset));
+
+                container.appendChild(el);
+                currentYOffset += lineHeight;
+            });
+        }
+
+        function updatePreviewOnly() {
+            const container = document.getElementById('previewContainer');
+            const canvasWidth = parseInt(document.getElementById('canvasWidth').value) || 0;
+            const canvasHeight = parseInt(document.getElementById('canvasHeight').value) || 0;
+            const syncFonts = document.getElementById('syncFonts').checked;
+
+            container.innerHTML = '';
+            if (textLines.length === 0) return;
+
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            let groupDims = calculateGroupDimensions();
+            let groupWidth = groupDims.groupWidth;
+            let groupHeight = groupDims.groupHeight;
+
+            if (canvasWidth > 0 && canvasHeight > 0) {
+                groupWidth = canvasWidth;
+                groupHeight = canvasHeight;
+            }
+
+            let scaleX = 1, scaleY = 1;
+            if (groupWidth > containerWidth * 0.9) scaleX = (containerWidth * 0.9) / groupWidth;
+            if (groupHeight > containerHeight * 0.9) scaleY = (containerHeight * 0.9) / groupHeight;
+            const scale = Math.min(scaleX, scaleY, 1);
+
+            const groupCenterX = containerWidth / 2;
+            const groupCenterY = containerHeight / 2;
+
+            if (canvasWidth > 0 && canvasHeight > 0) {
+                const canvasEl = document.createElement('div');
+                canvasEl.className = 'canvas-dimensions';
+                canvasEl.style.width = (canvasWidth * scale) + 'px';
+                canvasEl.style.height = (canvasHeight * scale) + 'px';
+                canvasEl.style.left = '50%';
+                canvasEl.style.top = '50%';
+                canvasEl.style.transform = 'translate(-50%, -50%)';
+                canvasEl.textContent = canvasWidth + ' × ' + canvasHeight + ' mm';
+                container.appendChild(canvasEl);
+            }
+
+            let currentYOffset = -(groupHeight * scale) / 2;
+            
+            textLines.forEach((line) => {
+                let font = line.font, weight = line.weight, size = line.size;
+                if (syncFonts) {
+                    font = document.getElementById('globalFont').value;
+                    weight = document.getElementById('globalWeight').value;
+                    size = parseInt(document.getElementById('globalSize').value) || 50;
+                }
+
+                const scaledSize = size * 0.75 * scale;
+                const lineHeight = size * scale;
+                const lineCenter = currentYOffset + (lineHeight / 2);
+
+                const screenX = groupCenterX + (line.relPosX * scale);
+                const screenY = groupCenterY + lineCenter + (line.relPosY * scale);
+
+                const el = document.createElement('div');
+                el.className = 'preview-text-line';
+                el.textContent = line.text;
+                el.style.fontFamily = font;
+                el.style.fontWeight = weight;
+                el.style.fontSize = scaledSize + 'px';
+                el.style.left = screenX + 'px';
+                el.style.top = screenY + 'px';
+                el.dataset.lineId = line.id;
+                el.addEventListener('mousedown', (e) => startDrag(e, line.id, scale, groupCenterX, groupCenterY, currentYOffset));
+
+                container.appendChild(el);
+                currentYOffset += lineHeight;
+            });
+        }
+
+        function startDrag(e, lineId, scale, groupCenterX, groupCenterY, currentYOffset) {
+            draggedElement = e.target;
+            const rect = draggedElement.getBoundingClientRect();
+            const containerRect = document.getElementById('previewContainer').getBoundingClientRect();
+            
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+
+            document.addEventListener('mousemove', (ev) => drag(ev, lineId, scale, groupCenterX, groupCenterY));
+            document.addEventListener('mouseup', () => stopDrag(lineId));
+        }
+
+        function drag(e, lineId, scale, groupCenterX, groupCenterY) {
+            if (!draggedElement) return;
+            
+            const container = document.getElementById('previewContainer');
+            const containerRect = container.getBoundingClientRect();
+            
+            let newX = e.clientX - containerRect.left - dragOffsetX;
+            let newY = e.clientY - containerRect.top - dragOffsetY;
+
+            newX = Math.max(0, Math.min(newX, containerRect.width - draggedElement.offsetWidth));
+            newY = Math.max(0, Math.min(newY, containerRect.height - draggedElement.offsetHeight));
+
+            draggedElement.style.left = newX + 'px';
+            draggedElement.style.top = newY + 'px';
+        }
+
+        function stopDrag(lineId) {
+            if (draggedElement) {
+                const line = textLines.find(l => l.id === lineId);
+                const container = document.getElementById('previewContainer');
+                const groupCenterX = container.clientWidth / 2;
+                const groupCenterY = container.clientHeight / 2;
+                
+                const screenX = parseInt(draggedElement.style.left);
+                const screenY = parseInt(draggedElement.style.top);
+                
+                const groupDims = calculateGroupDimensions();
+                const canvasWidth = parseInt(document.getElementById('canvasWidth').value) || 0;
+                const canvasHeight = parseInt(document.getElementById('canvasHeight').value) || 0;
+                
+                let groupWidth = groupDims.groupWidth;
+                let groupHeight = groupDims.groupHeight;
+                if (canvasWidth > 0 && canvasHeight > 0) {
+                    groupWidth = canvasWidth;
+                    groupHeight = canvasHeight;
+                }
+                
+                let scaleX = 1, scaleY = 1;
+                if (groupWidth > container.clientWidth * 0.9) scaleX = (container.clientWidth * 0.9) / groupWidth;
+                if (groupHeight > container.clientHeight * 0.9) scaleY = (container.clientHeight * 0.9) / groupHeight;
+                const scale = Math.min(scaleX, scaleY, 1);
+                
+                if (line) {
+                    line.relPosX = (screenX - groupCenterX) / scale;
+                    line.relPosY = (screenY - groupCenterY) / scale;
+                }
+            }
+            draggedElement = null;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        document.getElementById('canvasWidth')?.addEventListener('change', updatePreview);
+        document.getElementById('canvasHeight')?.addEventListener('change', updatePreview);
+        
+        document.getElementById('syncFonts')?.addEventListener('change', () => {
+            const globalControls = document.getElementById('globalFontControls');
+            const syncChecked = document.getElementById('syncFonts').checked;
+            
+            if (syncChecked && textLines.length > 0) {
+                const firstLine = textLines[0];
+                textLines.forEach(line => {
+                    if (line.id !== firstLine.id) {
+                        line.font = firstLine.font;
+                        line.weight = firstLine.weight;
+                        line.size = firstLine.size;
+                    }
+                });
+                
+                document.getElementById('globalFont').value = firstLine.font;
+                document.getElementById('globalWeight').value = firstLine.weight;
+                document.getElementById('globalSize').value = firstLine.size;
+            }
+            
+            if (syncChecked) { globalControls.classList.remove('hidden'); } 
+            else { globalControls.classList.add('hidden'); }
+            
+            renderTextLines();
+            updatePreviewOnly();
+        });
+
+        document.getElementById('globalFont')?.addEventListener('change', updatePreviewOnly);
+        document.getElementById('globalWeight')?.addEventListener('change', updatePreviewOnly);
+        document.getElementById('globalSize')?.addEventListener('change', updatePreviewOnly);
+        
+        document.getElementById('addLineBtn')?.addEventListener('click', (e) => { e.preventDefault(); addTextLine(); });
+
+        document.getElementById('shape-letters')?.addEventListener('change', () => {
+            if (document.getElementById('shape-letters').checked) {
+                document.getElementById('lettersPreview').classList.add('active');
+                document.getElementById('dimensionsSectionNormal').style.display = 'none';
+                if (textLines.length === 0) { addTextLine(); }
+            }
+        });
+        document.getElementById('shape-panel')?.addEventListener('change', () => { document.getElementById('lettersPreview').classList.remove('active'); document.getElementById('dimensionsSectionNormal').style.display = 'block'; });
+        document.getElementById('shape-custom')?.addEventListener('change', () => { document.getElementById('lettersPreview').classList.remove('active'); document.getElementById('dimensionsSectionNormal').style.display = 'block'; });
+
+        const form = document.getElementById('flatCutForm');
+        const successMessage = document.getElementById('successMessage');
+        const summary = document.getElementById('summary');
+        const generatePDFBtn = document.getElementById('generatePDF');
+
+        const materialFinishing = { 'ACM 3mm': ['Raw', 'UV Print + Laminate', 'UV Print + Clear Coat', 'Vinyl Wrap + Laminate'], 'Back Black ACM 3mm': ['Raw', 'UV Print + Laminate', 'UV Print + Clear Coat', 'Vinyl Wrap + Laminate'], 'Acrylic 3-10mm': ['Raw', 'UV Print + Clear Coat', 'Vinyl Wrap + Laminate'], 'Acrylic 10-20mm': ['Raw', 'UV Print + Clear Coat', 'Vinyl Wrap + Laminate'], 'PVC 10-30mm': ['Raw', 'UV Print + Laminate', 'UV Print + Clear Coat'] };
+        const materialMounting = { 'ACM 3mm': ['Adhesive Backing', 'Pre-drilled Holes', 'Standoff', 'Railing'], 'Back Black ACM 3mm': ['Adhesive Backing', 'Pre-drilled Holes', 'Standoff', 'Railing'], 'Acrylic 3-10mm': ['Adhesive Backing', 'Pre-drilled Holes', 'Standoff'], 'Acrylic 10-20mm': ['Adhesive Backing', 'Pre-drilled Holes', 'Standoff'], 'PVC 10-30mm': ['Adhesive Backing', 'Pre-drilled Holes'] };
+
+        function makeToggleable(inputElement) {
+            let isChecked = false;
+            inputElement.addEventListener('click', (e) => { if (isChecked) { e.preventDefault(); inputElement.checked = false; isChecked = false; updateState(); } });
+            inputElement.addEventListener('change', () => { isChecked = inputElement.checked; updateState(); });
+        }
+
+        function renderFinishingOptions() {
+            const material = document.getElementById('material').value;
+            const group = document.getElementById('finishingGroup');
+            const allOptions = ['Raw', 'UV Print + Laminate', 'UV Print + Clear Coat', 'Vinyl Wrap + Laminate'];
+            const availableOptions = materialFinishing[material] || allOptions;
+            group.innerHTML = '';
+            availableOptions.forEach(option => {
+                const div = document.createElement('div');
+                div.className = 'button-option';
+                const id = `finish-${option.toLowerCase().replace(/\s+/g, '-')}`;
+                div.innerHTML = `<input type="radio" id="${id}" name="finishing" value="${option}"><label for="${id}">${option}</label>`;
+                group.appendChild(div);
+                const input = document.getElementById(id);
+                makeToggleable(input);
+                input.addEventListener('change', updateFinishTypeVisibility);
+            });
+            updateFinishTypeVisibility();
+            updateState();
+        }
+
+        function updateFinishTypeVisibility() {
+            const finishing = document.querySelector('input[name="finishing"]:checked');
+            const finishTypeSection = document.getElementById('finishTypeSection');
+            if (finishing && (finishing.value.includes('Laminate') || finishing.value.includes('Clear Coat'))) {
+                finishTypeSection.style.display = 'block';
+                if (!document.querySelector('input[name="finishType"]:checked')) document.getElementById('finishtype-gloss').checked = true;
+            } else {
+                finishTypeSection.style.display = 'none';
+                document.querySelectorAll('input[name="finishType"]').forEach(input => input.checked = false);
+            }
+        }
+
+        function renderMountingOptions() {
+            const material = document.getElementById('material').value;
+            const group = document.getElementById('mountingGroup');
+            const allOptions = ['Adhesive Backing', 'Pre-drilled Holes', 'Standoff', 'Railing'];
+            const availableOptions = materialMounting[material] || allOptions;
+            group.innerHTML = '';
+            availableOptions.forEach(option => {
+                const div = document.createElement('div');
+                div.className = 'button-option';
+                const id = `mount-${option.toLowerCase().replace(/\s+/g, '-')}`;
+                div.innerHTML = `<input type="radio" id="${id}" name="mounting" value="${option}"><label for="${id}">${option}</label>`;
+                group.appendChild(div);
+                const input = document.getElementById(id);
+                makeToggleable(input);
+            });
+            updateState();
+        }
+
+        function validateDimensions() {
+            const shape = document.querySelector('input[name="shape"]:checked')?.value;
+            let width, height;
+            if (shape === 'Letters') {
+                width = parseInt(document.getElementById('canvasWidth').value) || 0;
+                height = parseInt(document.getElementById('canvasHeight').value) || 0;
+            } else {
+                width = parseInt(document.getElementById('width').value) || 0;
+                height = parseInt(document.getElementById('height').value) || 0;
+            }
+            const dimWarning = document.getElementById('dimensionWarning');
+            if (width === 0 || height === 0) { dimWarning?.classList.remove('active'); return true; }
+            if (width > 2400 || height > 2400) {
+                if (dimWarning) { dimWarning.textContent = '⚠️ Maximum dimension is 2400mm. One dimension cannot exceed 2400.'; dimWarning.classList.add('active'); }
+                return false;
+            }
+            if (width > 1200 && height > 1200 && shape !== 'Letters') {
+                if (dimWarning) { dimWarning.textContent = '⚠️ If one dimension exceeds 1200mm, the other cannot exceed 1200mm. Max combination: 1200×2400.'; dimWarning.classList.add('active'); }
+                return false;
+            }
+            dimWarning?.classList.remove('active');
+            return true;
+        }
+
+        function validateAndWarn() {
+            validateDimensions();
+            const material = document.getElementById('material').value;
+            const location = document.querySelector('input[name="location"]:checked');
+            const finishing = document.querySelector('input[name="finishing"]:checked');
+            const matWarning = document.getElementById('materialWarning');
+            if (material.includes('PVC') && location && location.value === 'Exterior') {
+                matWarning.textContent = '⚠️ PVC is NOT recommended for exterior use (UV decolouration risk). Consider Acrylic instead.';
+                matWarning.classList.add('active');
+            } else { matWarning.classList.remove('active'); }
+            const locWarning = document.getElementById('locationWarning');
+            if (location && location.value === 'Exterior' && finishing && (finishing.value === 'UV Print + Laminate' || finishing.value === 'UV Print + Clear Coat')) {
+                locWarning.textContent = '💡 For exterior durability, consider "Vinyl Wrap + Laminate" (superior UV resistance).';
+                locWarning.classList.add('active');
+            } else { locWarning.classList.remove('active'); }
+            updateSummary();
+        }
+
+        function updateState() { validateAndWarn(); }
+
+        function updateSummary() {
+            const formData = new FormData(form);
+            const shape = formData.get('shape') || '-';
+            let dimensions = '-';
+            if (shape === 'Letters') {
+                const cw = document.getElementById('canvasWidth').value || '-';
+                const ch = document.getElementById('canvasHeight').value || '-';
+                dimensions = cw !== '-' && ch !== '-' ? `${cw} × ${ch} mm` : '-';
+            } else {
+                const width = formData.get('width') || '-';
+                const height = formData.get('height') || '-';
+                dimensions = width && height ? `${width} × ${height} mm` : '-';
+            }
+            const material = formData.get('material') || '-';
+            const location = formData.get('location') || '-';
+            const finishing = formData.get('finishing') || '-';
+            const finishType = formData.get('finishType') || '-';
+            const mounting = formData.get('mounting') || '-';
+            const notes = formData.get('notes') || '-';
+
+            document.getElementById('sum-shape').textContent = shape;
+            document.getElementById('sum-dimensions').textContent = dimensions;
+            document.getElementById('sum-material').textContent = material;
+            document.getElementById('sum-location').textContent = location;
+            document.getElementById('sum-finishing').textContent = finishing;
+            document.getElementById('sum-finishtype').textContent = finishType === '-' ? 'N/A' : finishType;
+            document.getElementById('sum-mounting').textContent = mounting;
+            document.getElementById('sum-notes').textContent = notes === '-' ? 'None' : notes;
+
+            if (shape === 'Letters' && textLines.length > 0) {
+                document.getElementById('sum-letters-row').style.display = 'grid';
+                const lettersInfo = textLines.map((line, i) => `Line ${i+1}: ${line.font}, ${line.size}mm, ${line.text.length} chars`).join(' | ');
+                document.getElementById('sum-letters').textContent = lettersInfo;
+            } else { document.getElementById('sum-letters-row').style.display = 'none'; }
+
+            const dimsValid = validateDimensions();
+            const allFilled = shape !== '-' && dimensions !== '-' && material && location && finishing && mounting;
+            if (allFilled && dimsValid) { summary.classList.add('active'); generatePDFBtn.disabled = false; } else { summary.classList.remove('active'); generatePDFBtn.disabled = true; }
+        }
+
+        document.getElementById('generatePDF').addEventListener('click', function() { alert('PDF generation would include all form data and letters preview'); });
+        document.getElementById('saveConfig').addEventListener('click', function() {
+            const formData = new FormData(form);
+            const shape = formData.get('shape');
+            const config = {
+                shape: shape,
+                width: shape === 'Letters' ? document.getElementById('canvasWidth').value : formData.get('width'),
+                height: shape === 'Letters' ? document.getElementById('canvasHeight').value : formData.get('height'),
+                material: formData.get('material'),
+                location: formData.get('location'),
+                finishing: formData.get('finishing'),
+                finishType: formData.get('finishType'),
+                mounting: formData.get('mounting'),
+                notes: formData.get('notes'),
+                textLines: shape === 'Letters' ? textLines.map(l => l.getStats()) : null,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('flatCutConfig', JSON.stringify(config));
+            successMessage.classList.add('active');
+            setTimeout(() => { successMessage.classList.remove('active'); }, 3000);
+            console.log('Configuration saved:', config);
+        });
+
+        document.getElementById('material').addEventListener('change', () => { renderFinishingOptions(); renderMountingOptions(); });
+        form.addEventListener('change', validateAndWarn);
+        document.getElementById('width').addEventListener('input', validateAndWarn);
+        document.getElementById('height').addEventListener('input', validateAndWarn);
+        document.querySelectorAll('input[name="shape"], input[name="location"], input[name="finishType"]').forEach(input => { makeToggleable(input); });
+
+        renderFinishingOptions();
+        renderMountingOptions();
+        validateAndWarn();
+    </script>
+</body>
+</html>
