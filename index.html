@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flat Cut - Product Configuration Form</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Roboto:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
@@ -332,18 +332,18 @@
         };
         const _calRawCache = {};
 
-        // Raw canvas measurement (no correction)
+        // Raw canvas pixel width at fixed em-size.
+        // capRatio is intentionally excluded here — it cancels in the ratio formula.
         function _rawWidthMm(text, fontFamily, fontWeight, sizeMm) {
             if (!text) return 0;
             try {
-                const capRatio = getCapHeightRatio(fontFamily, fontWeight);
                 const refSz = 200;
                 const cvs = document.createElement('canvas');
                 cvs.width = 8000; cvs.height = 400;
                 const ctx = cvs.getContext('2d');
                 ctx.font = `${fontWeight} ${refSz}px ${fontFamily}`;
                 const widthPx = ctx.measureText(text).width;
-                return widthPx * sizeMm / (refSz * capRatio);
+                return widthPx * sizeMm / refSz;
             } catch (e) { return text.length * sizeMm * 0.6; }
         }
 
@@ -1150,10 +1150,14 @@
             }
         }
 
-        // Fonts load asynchronously — the first canvas measurement may use a
-        // fallback font. Clear both caches once fonts are ready and re-warm,
-        // so all correction factors are computed with the real typefaces loaded.
-        document.fonts.ready.then(() => {
+        // Explicitly load every font+weight used in canvas measurements.
+        // document.fonts.ready only waits for CSS-requested fonts, not canvas fonts.
+        // document.fonts.load() forces the browser to fetch and cache each face,
+        // so _rawWidthMm always measures with the real typeface, not a fallback.
+        const _canvasFonts = Object.entries(FONT_WEIGHTS).flatMap(([family, weights]) =>
+            weights.map(({v}) => `${v} 200px ${family}`)
+        );
+        Promise.all(_canvasFonts.map(f => document.fonts.load(f).catch(() => {}))).then(() => {
             Object.keys(_calRawCache).forEach(k => delete _calRawCache[k]);
             Object.keys(_capHCache).forEach(k => delete _capHCache[k]);
             Object.keys(CALIBRATION).forEach(key => {
