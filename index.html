@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flat Cut - Product Configuration Form</title>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Roboto:wght@400;600;700;900&family=Anton&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
@@ -199,7 +199,7 @@
                         <h3>Letters Preview &amp; Configuration</h3>
                         <div class="sync-font-option"><input type="checkbox" id="syncFonts" checked><label for="syncFonts">Apply same font settings to all lines</label></div>
                         <div id="globalFontControls" class="global-font-controls">
-                            <div class="control-group"><label>Font Family</label><select id="globalFont"><option value="Roboto">Roboto</option><option value="Georgia">Georgia</option><option value="Anton">Anton (Sans Ultra Bold)</option><option value="'Playfair Display'">Playfair Display (Serif Bold)</option></select></div>
+                            <div class="control-group"><label>Font Family</label><select id="globalFont"><option value="Roboto">Roboto</option><option value="Georgia">Georgia</option></select></div>
                             <div class="control-group"><label>Weight</label><select id="globalWeight"><option value="400">Regular</option><option value="600">Semi Bold</option><option value="700">Bold</option><option value="800">Extra Bold</option><option value="900">Black</option></select></div>
                             <div class="control-group"><label>Font Size (mm)</label><input type="number" id="globalSize" value="50" min="10"></div>
                             <div class="control-group"><label>Condense (mm)</label><input type="number" id="globalCondense" placeholder="auto"></div>
@@ -326,7 +326,9 @@
             'Roboto|700': { text: 'GRAFIX GROUP', sizeMm: 100, realWidthMm: 952   },
             'Roboto|800': { text: 'GRAFIX GROUP', sizeMm: 100, realWidthMm: 956.5 },
             'Roboto|900': { text: 'GRAFIX GROUP', sizeMm: 100, realWidthMm: 960.7 },
-            // Georgia, Anton, Playfair Display — add here once measured
+            'Georgia|400': { text: 'GRAFIX GROUP', sizeMm: 100, realWidthMm: 1033.7 },
+            'Georgia|700': { text: 'GRAFIX GROUP', sizeMm: 100, realWidthMm: 1156   },
+            // Add more fonts here once measured on the cutter
         };
         const _corrCache = {};
 
@@ -360,6 +362,22 @@
         // Public — applies correction when calibration data is available
         function getActualTextWidthMm(text, fontFamily, fontWeight, sizeMm) {
             return _rawWidthMm(text, fontFamily, fontWeight, sizeMm) * _corrFactor(fontFamily, fontWeight);
+        }
+
+        // ── Font/weight availability per font ─────────────────────────────────
+        const FONT_WEIGHTS = {
+            'Roboto':  [{v:'400',l:'Regular'},{v:'600',l:'Semi Bold'},{v:'700',l:'Bold'},{v:'800',l:'Extra Bold'},{v:'900',l:'Black'}],
+            'Georgia': [{v:'400',l:'Regular'},{v:'700',l:'Bold'}],
+        };
+        function weightsFor(font) { return FONT_WEIGHTS[font] || [{v:'400',l:'Regular'},{v:'700',l:'Bold'}]; }
+
+        function renderGlobalWeightSelect(font) {
+            const sel = document.getElementById('globalWeight');
+            if (!sel) return;
+            const cur = sel.value;
+            const weights = weightsFor(font);
+            sel.innerHTML = weights.map(({v,l}) => `<option value="${v}">${l}</option>`).join('');
+            sel.value = weights.find(w => w.v === cur) ? cur : weights[0].v;
         }
         // ─────────────────────────────────────────────────────────────────────
 
@@ -407,7 +425,8 @@
                 const weightLabel = line.weight === '900' ? 'Black' : line.weight === '800' ? 'Extra Bold' : line.weight === '700' ? 'Bold' : line.weight === '600' ? 'Semi Bold' : 'Regular';
                 let configHTML = '';
                 if (!syncFonts) {
-                    configHTML = `<div class="control-group"><label>Font Family</label><select onchange="updateLineFont(${line.id}, this.value)"><option value="Roboto" ${line.font === 'Roboto' ? 'selected' : ''}>Roboto</option><option value="Georgia" ${line.font === 'Georgia' ? 'selected' : ''}>Georgia</option><option value="Anton" ${line.font === 'Anton' ? 'selected' : ''}>Anton (Sans Ultra Bold)</option><option value="'Playfair Display'" ${line.font === "'Playfair Display'" ? 'selected' : ''}>Playfair Display (Serif Bold)</option></select></div><div class="control-group"><label>Weight</label><select onchange="updateLineWeight(${line.id}, this.value)"><option value="400" ${line.weight === '400' ? 'selected' : ''}>Regular</option><option value="600" ${line.weight === '600' ? 'selected' : ''}>Semi Bold</option><option value="700" ${line.weight === '700' ? 'selected' : ''}>Bold</option><option value="800" ${line.weight === '800' ? 'selected' : ''}>Extra Bold</option><option value="900" ${line.weight === '900' ? 'selected' : ''}>Black</option></select></div><div class="control-group"><label>Font Size (mm)</label><input type="number" value="${line.size}" onchange="updateLineSize(${line.id}, this.value)"></div><div class="control-group"><label>Condense (mm)</label><input type="number" value="${line.condense || ''}" placeholder="auto" onchange="updateLineCondense(${line.id}, this.value)"></div>`;
+                    const wOpts = weightsFor(line.font).map(({v,l}) => `<option value="${v}" ${line.weight === v ? 'selected' : ''}>${l}</option>`).join('');
+                    configHTML = `<div class="control-group"><label>Font Family</label><select onchange="updateLineFont(${line.id}, this.value)"><option value="Roboto" ${line.font === 'Roboto' ? 'selected' : ''}>Roboto</option><option value="Georgia" ${line.font === 'Georgia' ? 'selected' : ''}>Georgia</option></select></div><div class="control-group"><label>Weight</label><select onchange="updateLineWeight(${line.id}, this.value)">${wOpts}</select></div><div class="control-group"><label>Font Size (mm)</label><input type="number" value="${line.size}" onchange="updateLineSize(${line.id}, this.value)"></div><div class="control-group"><label>Condense (mm)</label><input type="number" value="${line.condense || ''}" placeholder="auto" onchange="updateLineCondense(${line.id}, this.value)"></div>`;
                 }
                 const hasChanges = changedLineId === line.id;
                 const editBtn = !hasChanges ? `<button type="button" class="btn-small btn-edit" onclick="editLine(${line.id})">Edit</button>` : '';
@@ -427,7 +446,7 @@
         function editLine(id) { changedLineId = id; renderTextLines(); }
         function applyLineChanges(id) { changedLineId = null; renderTextLines(); updatePreview(); }
         function updateLineText(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.text = value; updatePreview(); } }
-        function updateLineFont(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.font = value; renderTextLines(); updatePreviewOnly(); } }
+        function updateLineFont(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.font = value; const avail = weightsFor(value).map(w => w.v); if (!avail.includes(line.weight)) line.weight = avail[0]; renderTextLines(); updatePreviewOnly(); } }
         function updateLineWeight(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.weight = value; renderTextLines(); updatePreviewOnly(); } }
 
         function setLineAlignment(id, align) {
@@ -776,6 +795,7 @@
                 });
 
                 document.getElementById('globalFont').value = firstLine.font;
+                renderGlobalWeightSelect(firstLine.font);
                 document.getElementById('globalWeight').value = firstLine.weight;
                 document.getElementById('globalSize').value = firstLine.size;
             }
@@ -787,7 +807,7 @@
             updatePreviewOnly();
         });
 
-        document.getElementById('globalFont')?.addEventListener('change', updatePreviewOnly);
+        document.getElementById('globalFont')?.addEventListener('change', (e) => { renderGlobalWeightSelect(e.target.value); updatePreviewOnly(); });
         document.getElementById('globalWeight')?.addEventListener('change', updatePreviewOnly);
         document.getElementById('globalSize')?.addEventListener('change', updatePreviewOnly);
 
@@ -1026,6 +1046,7 @@
         renderFinishingOptions();
         renderMountingOptions();
         validateAndWarn();
+        renderGlobalWeightSelect(document.getElementById('globalFont').value);
 
         // [FIX #7] loadConfig: restore full form state from localStorage on page load
         function loadConfig() {
@@ -1124,6 +1145,19 @@
                 console.warn('Could not load saved configuration:', e);
             }
         }
+
+        // Fonts load asynchronously — the first canvas measurement may use a
+        // fallback font. Clear both caches once fonts are ready and re-warm,
+        // so all correction factors are computed with the real typefaces loaded.
+        document.fonts.ready.then(() => {
+            Object.keys(_corrCache).forEach(k => delete _corrCache[k]);
+            Object.keys(_capHCache).forEach(k => delete _capHCache[k]);
+            Object.keys(CALIBRATION).forEach(key => {
+                const [f, w] = key.split('|');
+                _corrFactor(f, w);
+            });
+            if (textLines.length > 0) { renderTextLines(); updatePreview(); }
+        });
 
         document.addEventListener('DOMContentLoaded', loadConfig);
     </script>
