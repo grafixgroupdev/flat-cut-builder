@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flat Cut - Product Configuration Form</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Roboto:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc" crossorigin="anonymous"></script>
     <style>
         :root {
             --color-bg:        #f1f5f9;
@@ -262,6 +262,17 @@
     <div id="pdfPrintContent"></div>
 
     <script>
+        // ── HTML escaping (XSS prevention) ───────────────────────────────
+        function escapeHTML(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        // ── Weight label helper ──────────────────────────────────────────
+        const _weightLabelMap = {'900':'Black','800':'Extra Bold','700':'Bold','600':'Semi Bold'};
+        function weightLabel(w) { return _weightLabelMap[w] || 'Regular'; }
+
         // ── Progress Stepper ─────────────────────────────────────────────
         const STEP_FIELDS = {
             1: () => document.querySelector('input[name="shape"]:checked'),
@@ -614,7 +625,7 @@
                 const div = document.createElement('div');
                 div.className = 'text-line-item';
                 if (changedLineId === line.id) div.classList.add('expanded');
-                const weightLabel = line.weight === '900' ? 'Black' : line.weight === '800' ? 'Extra Bold' : line.weight === '700' ? 'Bold' : line.weight === '600' ? 'Semi Bold' : 'Regular';
+                const wLabel = weightLabel(line.weight);
                 let configHTML = '';
                 if (!syncFonts) {
                     const wOpts = weightsFor(line.font).map(({v,l}) => `<option value="${v}" ${line.weight === v ? 'selected' : ''}>${l}</option>`).join('');
@@ -626,10 +637,10 @@
                 const effFont = syncFonts ? document.getElementById('globalFont').value : line.font;
                 const effWeight = syncFonts ? document.getElementById('globalWeight').value : line.weight;
                 const effSize = syncFonts ? (parseInt(document.getElementById('globalSize').value) || 50) : line.size;
-                const statsHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"><span style="background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">${effFont}</span><span style="background:#f0fdf4;color:#166534;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">${weightLabel}</span><span style="background:#fefce8;color:#854d0e;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">${effSize}mm</span><span style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">${line.getWidth(effFont, effWeight, effSize).toFixed(1)}mm ancho · ${line.text.length} chars</span></div>`;
+                const statsHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"><span style="background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">${effFont}</span><span style="background:#f0fdf4;color:#166534;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">${wLabel}</span><span style="background:#fefce8;color:#854d0e;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">${effSize}mm</span><span style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">${line.getWidth(effFont, effWeight, effSize).toFixed(1)}mm ancho · ${line.text.length} chars</span></div>`;
                 const btnSq = `width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--color-border);border-radius:var(--radius-sm);cursor:pointer;background:#fff;color:var(--color-text);padding:0;flex-shrink:0;`;
                 const alignControl = `<div class="control-group"><label>Alignment</label><div style="display:flex;gap:4px;"><button type="button" onclick="setLineAlignment(${line.id},'left')" title="Align left" style="${btnSq}"><svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor"><rect y="0" width="14" height="2" rx="1"/><rect y="4" width="9" height="2" rx="1"/><rect y="8" width="11" height="2" rx="1"/></svg></button><button type="button" onclick="setLineAlignment(${line.id},'center')" title="Align center" style="${btnSq}"><svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor"><rect y="0" width="14" height="2" rx="1"/><rect x="2.5" y="4" width="9" height="2" rx="1"/><rect x="1.5" y="8" width="11" height="2" rx="1"/></svg></button><button type="button" onclick="setLineAlignment(${line.id},'right')" title="Align right" style="${btnSq}"><svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor"><rect y="0" width="14" height="2" rx="1"/><rect x="5" y="4" width="9" height="2" rx="1"/><rect x="3" y="8" width="11" height="2" rx="1"/></svg></button></div></div>`;
-                div.innerHTML = `<div class="text-line-header"><div style="flex: 1;"><div class="text-line-title">Text Line ${index + 1}</div><textarea class="text-input-inline" placeholder="Write your text here..." onchange="markLineChanged(${line.id}); updateLineText(${line.id}, this.value)">${line.text}</textarea>${statsHTML}<div class="text-line-config ${hasChanges ? 'active' : ''}"><div class="controls-grid">${configHTML}${alignControl}</div></div></div><div class="text-line-actions">${applyBtn}${editBtn}<button type="button" class="btn-small btn-delete" onclick="deleteTextLine(${line.id})">Delete</button></div></div>`;
+                div.innerHTML = `<div class="text-line-header"><div style="flex: 1;"><div class="text-line-title">Text Line ${index + 1}</div><textarea class="text-input-inline" placeholder="Write your text here..." onchange="markLineChanged(${line.id}); updateLineText(${line.id}, this.value)">${escapeHTML(line.text)}</textarea>${statsHTML}<div class="text-line-config ${hasChanges ? 'active' : ''}"><div class="controls-grid">${configHTML}${alignControl}</div></div></div><div class="text-line-actions">${applyBtn}${editBtn}<button type="button" class="btn-small btn-delete" onclick="deleteTextLine(${line.id})">Delete</button></div></div>`;
                 listContainer.appendChild(div);
             });
         }
@@ -638,8 +649,8 @@
         function editLine(id) { changedLineId = id; renderTextLines(); }
         function applyLineChanges(id) { changedLineId = null; renderTextLines(); updatePreview(); }
         function updateLineText(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.text = value; updatePreview(); } }
-        function updateLineFont(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.font = value; const avail = weightsFor(value).map(w => w.v); if (!avail.includes(line.weight)) line.weight = avail[0]; renderTextLines(); updatePreviewOnly(); } }
-        function updateLineWeight(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.weight = value; renderTextLines(); updatePreviewOnly(); } }
+        function updateLineFont(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.font = value; const avail = weightsFor(value).map(w => w.v); if (!avail.includes(line.weight)) line.weight = avail[0]; renderTextLines(); updatePreview(); } }
+        function updateLineWeight(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.weight = value; renderTextLines(); updatePreview(); } }
 
         function setLineAlignment(id, align) {
             const line = textLines.find(l => l.id === id);
@@ -657,8 +668,8 @@
             updatePreview();
             renderTextLines();
         }
-        function updateLineSize(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.size = parseInt(value) || 50; renderTextLines(); updatePreviewOnly(); } }
-        function updateLineCondense(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.condense = value ? parseInt(value) : null; renderTextLines(); updatePreviewOnly(); } }
+        function updateLineSize(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.size = parseInt(value) || 50; renderTextLines(); updatePreview(); } }
+        function updateLineCondense(id, value) { const line = textLines.find(l => l.id === id); if (line) { line.condense = value ? parseInt(value) : null; renderTextLines(); updatePreview(); } }
         function deleteTextLine(id) { textLines = textLines.filter(l => l.id !== id); changedLineId = null; renderTextLines(); updatePreview(); }
 
         function calculateGroupDimensions() {
@@ -774,98 +785,6 @@
                 el.style.top = screenY + 'px';
                 el.dataset.lineId = line.id;
                 el.addEventListener('mousedown', (e) => startDrag(e, line.id, scale, centerX, centerY, currentYOffset));
-
-                container.appendChild(el);
-                if (line.condense) {
-                    const naturalWidth = el.offsetWidth;
-                    const targetWidth = line.condense * scale;
-                    if (naturalWidth > 0) {
-                        const scaleXFactor = targetWidth / naturalWidth;
-                        el.style.transform = `translate(-50%, -50%) scaleX(${scaleXFactor})`;
-                    }
-                }
-                currentYOffset += lineHeight;
-            });
-        }
-
-        function updatePreviewOnly() {
-            const container = document.getElementById('previewContainer');
-            const canvasWidth = parseInt(document.getElementById('canvasWidth').value) || 0;
-            const canvasHeight = parseInt(document.getElementById('canvasHeight').value) || 0;
-            const syncFonts = document.getElementById('syncFonts').checked;
-
-            container.innerHTML = '';
-            if (textLines.length === 0) return;
-
-            const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
-
-            // Calcular dimensiones del grupo
-            let referenceWidth, referenceHeight;
-            if (canvasWidth > 0 && canvasHeight > 0) {
-                referenceWidth = canvasWidth;
-                referenceHeight = canvasHeight;
-            } else {
-                let groupDims = calculateGroupDimensions();
-                referenceWidth = groupDims.groupWidth;
-                referenceHeight = groupDims.groupHeight;
-            }
-
-            let scaleX = 1, scaleY = 1;
-            if (referenceWidth > containerWidth * 0.9) scaleX = (containerWidth * 0.9) / referenceWidth;
-            if (referenceHeight > containerHeight * 0.9) scaleY = (containerHeight * 0.9) / referenceHeight;
-            const scale = Math.min(scaleX, scaleY, 1);
-
-            const groupCenterX = containerWidth / 2;
-            const groupCenterY = containerHeight / 2;
-
-            if (canvasWidth > 0 && canvasHeight > 0) {
-                const canvasEl = document.createElement('div');
-                canvasEl.className = 'canvas-dimensions';
-                canvasEl.style.width = (canvasWidth * scale) + 'px';
-                canvasEl.style.height = (canvasHeight * scale) + 'px';
-                canvasEl.style.left = '50%';
-                canvasEl.style.top = '50%';
-                canvasEl.style.transform = 'translate(-50%, -50%)';
-                // [FIX #3] Restored canvas dimension label (was removed in v8)
-                canvasEl.textContent = canvasWidth + ' × ' + canvasHeight + ' mm';
-                container.appendChild(canvasEl);
-            }
-
-            // Centro el grupo de texto (no el canvas)
-            let totalGroupHeight = 0;
-            textLines.forEach(l => {
-                let s = syncFonts ? (parseInt(document.getElementById('globalSize').value) || 50) : l.size;
-                totalGroupHeight += s * scale;
-            });
-            let currentYOffset = -totalGroupHeight / 2;
-
-            textLines.forEach((line) => {
-                let font = line.font, weight = line.weight, size = line.size;
-                if (syncFonts) {
-                    font = document.getElementById('globalFont').value;
-                    weight = document.getElementById('globalWeight').value;
-                    size = parseInt(document.getElementById('globalSize').value) || 50;
-                }
-
-                const capRatio = getCapHeightRatio(font, weight);
-                const scaledSize = (size * scale) / capRatio;
-                const lineHeight = size * scale;
-                const lineBaseY = currentYOffset + (lineHeight / 2);
-
-                const screenX = groupCenterX + (line.relPosX * scale);
-                const screenY = groupCenterY + lineBaseY + (line.relPosY * scale);
-
-                const el = document.createElement('div');
-                el.className = 'preview-text-line';
-                el.textContent = line.text;
-                el.style.fontFamily = font;
-                el.style.fontWeight = weight;
-                el.style.fontSize = scaledSize + 'px';
-                el.style.left = screenX + 'px';
-                el.style.top = screenY + 'px';
-                el.dataset.lineId = line.id;
-                el.addEventListener('mousedown', (e) => startDrag(e, line.id, scale, groupCenterX, groupCenterY, currentYOffset));
 
                 container.appendChild(el);
                 if (line.condense) {
@@ -996,12 +915,12 @@
             else { globalControls.classList.add('hidden'); }
 
             renderTextLines();
-            updatePreviewOnly();
+            updatePreview();
         });
 
-        document.getElementById('globalFont')?.addEventListener('change', (e) => { renderGlobalWeightSelect(e.target.value); updatePreviewOnly(); });
-        document.getElementById('globalWeight')?.addEventListener('change', updatePreviewOnly);
-        document.getElementById('globalSize')?.addEventListener('change', updatePreviewOnly);
+        document.getElementById('globalFont')?.addEventListener('change', (e) => { renderGlobalWeightSelect(e.target.value); updatePreview(); });
+        document.getElementById('globalWeight')?.addEventListener('change', updatePreview);
+        document.getElementById('globalSize')?.addEventListener('change', updatePreview);
 
         document.getElementById('addLineBtn')?.addEventListener('click', (e) => { e.preventDefault(); addTextLine(); });
 
@@ -1024,9 +943,9 @@
         const materialMounting = { 'ACM 3mm': ['Adhesive Backing', 'Pre-drilled Holes', 'Standoff', 'Railing'], 'Back Black ACM 3mm': ['Adhesive Backing', 'Pre-drilled Holes', 'Standoff', 'Railing'], 'Acrylic 3-10mm': ['Adhesive Backing', 'Pre-drilled Holes', 'Standoff'], 'Acrylic 10-20mm': ['Adhesive Backing', 'Pre-drilled Holes', 'Standoff'], 'PVC 10-30mm': ['Adhesive Backing', 'Pre-drilled Holes'] };
 
         function makeToggleable(inputElement) {
-            let isChecked = false;
-            inputElement.addEventListener('click', (e) => { if (isChecked) { e.preventDefault(); inputElement.checked = false; isChecked = false; updateState(); } });
-            inputElement.addEventListener('change', () => { isChecked = inputElement.checked; updateState(); });
+            inputElement.addEventListener('mousedown', function() { this._wasChecked = this.checked; });
+            inputElement.addEventListener('click', function(e) { if (this._wasChecked) { e.preventDefault(); this.checked = false; updateState(); } });
+            inputElement.addEventListener('change', function() { updateState(); });
         }
 
         function renderFinishingOptions() {
@@ -1162,8 +1081,8 @@
                     const font = syncFonts ? gFont : line.font;
                     const weight = syncFonts ? gWeight : line.weight;
                     const size = syncFonts ? gSize : line.size;
-                    const wLabel = weight === '900' ? 'Black' : weight === '800' ? 'Extra Bold' : weight === '700' ? 'Bold' : weight === '600' ? 'Semi Bold' : 'Regular';
-                    return `<div class="summary-item"><div class="summary-label">Line ${i+1}</div><div class="summary-value">"${line.text || '(empty)'}" &mdash; ${font}, ${wLabel}, ${size}mm, ${line.getWidth(font, weight, size).toFixed(1)}mm ancho, ${line.text.length} chars</div></div>`;
+                    const wl = weightLabel(weight);
+                    return `<div class="summary-item"><div class="summary-label">Line ${i+1}</div><div class="summary-value">"${escapeHTML(line.text) || '(empty)'}" &mdash; ${font}, ${wl}, ${size}mm, ${line.getWidth(font, weight, size).toFixed(1)}mm ancho, ${line.text.length} chars</div></div>`;
                 }).join('');
             } else { lettersContainer.innerHTML = ''; }
 
@@ -1232,8 +1151,8 @@
                     const gS = parseInt(document.getElementById('globalSize').value) || 50;
                     lettersRows = textLines.map((line, i) => {
                         const f = sync ? gF : line.font, w = sync ? gW : line.weight, s = sync ? gS : line.size;
-                        const wl = w==='900'?'Black':w==='800'?'Extra Bold':w==='700'?'Bold':w==='600'?'Semi Bold':'Regular';
-                        return `<tr><td style="padding:6px 12px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0;">Line ${i+1}</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;">"${line.text||'(empty)'}" — ${f}, ${wl}, ${s}mm, ${line.getWidth(f,w,s).toFixed(0)}mm wide</td></tr>`;
+                        const wl = weightLabel(w);
+                        return `<tr><td style="padding:6px 12px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0;">Line ${i+1}</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;">"${escapeHTML(line.text)||'(empty)'}" — ${f}, ${wl}, ${s}mm, ${line.getWidth(f,w,s).toFixed(0)}mm wide</td></tr>`;
                     }).join('');
                 }
 
@@ -1423,7 +1342,8 @@
             if (textLines.length > 0) { renderTextLines(); updatePreview(); }
         });
 
-        document.addEventListener('DOMContentLoaded', loadConfig);
+        // Load config directly — script is at end of body so DOM is ready
+        loadConfig();
     </script>
 </body>
 </html>
