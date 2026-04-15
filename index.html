@@ -128,8 +128,11 @@
         #shapePreviewCanvas { display: none; width: 100%; height: 220px; margin-top: 14px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); background: #f8fafc; }
         #shapePreviewCanvas.active { display: block; }
 
-        /* PDF print content (hidden in UI, exported to PDF) */
-        #pdfPrintContent { position: fixed; left: -9999px; top: 0; width: 210mm; background: white; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #111; padding: 14mm 16mm; box-sizing: border-box; }
+        /* PDF print content (hidden in UI, exported to PDF)
+           MUST be position:absolute — html2canvas captures position:fixed elements
+           relative to the viewport, so left:-9999px would produce a blank canvas.
+           Width in px (not mm) for consistent html2canvas interpretation. */
+        #pdfPrintContent { position: absolute; left: -9999px; top: 0; width: 794px; background: white; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #111; padding: 40px 48px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -296,7 +299,8 @@
                     el.classList.add('active');
                     activeSet = true;
                 }
-                if (connectors[i]) connectors[i].style.background = done ? 'var(--color-header)' : '';
+                // Only colour the connector if this step is truly completed (no incomplete step before it)
+                if (connectors[i]) connectors[i].style.background = (done && !activeSet) ? 'var(--color-header)' : '';
             });
             if (!activeSet) steps[steps.length - 1].classList.add('completed');
         }
